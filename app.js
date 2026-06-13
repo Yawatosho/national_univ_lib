@@ -813,6 +813,23 @@
   }
 
   function switchMode(newMode, state = {}) {
+    state = {
+      year: '',
+      metric: '',
+      x: '',
+      y: '',
+      highlight: '',
+      showReg: false,
+      showMedian: true,
+      xMax: '',
+      yMax: '',
+      top: 'all',
+      rank: 'value',
+      lineUniversities: [],
+      ...state
+    };
+    if (!Array.isArray(state.lineUniversities)) state.lineUniversities = [];
+
     chartMode = MODE_VALUES.includes(newMode) ? newMode : 'bar';
     window.chartMode = chartMode;
     renderControls(chartMode);
