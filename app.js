@@ -30,10 +30,13 @@
   let suppressUrlUpdate = true;
   let universityPickerConfigs = {};
   let shareStatusTimer = null;
+  let suppressEmbeddedChartText = false;
 
   const footerPlugin = {
     id: 'footerPlugin',
     afterDraw: chartInstance => {
+      if (suppressEmbeddedChartText) return;
+
       const ctx = chartInstance.ctx;
       const area = chartInstance.chartArea;
       if (!area) return;
@@ -791,9 +794,7 @@
         document.getElementById('yearLabel').textContent = years[this.value];
         drawScatter();
       };
-      document.getElementById('resetZoom').onclick = () => {
-        if (chart && typeof chart.resetZoom === 'function') chart.resetZoom();
-      };
+      document.getElementById('resetZoom').onclick = resetScatterView;
       document.getElementById('savePng').onclick = () => {
         saveChart(`scatter_${document.getElementById('yearLabel').textContent}.png`);
       };
@@ -899,6 +900,19 @@
     const activeInput = document.querySelector(`#modeSwitch input[value="${chartMode}"]`);
     if (activeInput) activeInput.checked = true;
     setModeActive();
+  }
+
+  function resetScatterView() {
+    const xMax = document.getElementById('xMax');
+    const yMax = document.getElementById('yMax');
+    if (xMax) xMax.value = '';
+    if (yMax) yMax.value = '';
+
+    if (chart && typeof chart.resetZoom === 'function') {
+      chart.resetZoom();
+    }
+
+    drawScatter();
   }
 
   function setupYearSlider(preferredYear = '') {
@@ -1546,7 +1560,7 @@
     });
 
     y += 26;
-    ctx.drawImage(chartCanvas, margin, y, chartWidth, chartHeight);
+    drawChartWithoutEmbeddedText(ctx, margin, y, chartWidth, chartHeight);
 
     y += chartHeight + 26;
     ctx.fillStyle = '#666666';
@@ -1557,6 +1571,29 @@
     });
 
     return canvas;
+  }
+
+  function drawChartWithoutEmbeddedText(ctx, x, y, width, height) {
+    const pluginOptions = chart.options?.plugins || {};
+    const titleOptions = pluginOptions.title;
+    const subtitleOptions = pluginOptions.subtitle;
+    const previousTitleDisplay = titleOptions ? titleOptions.display : undefined;
+    const previousSubtitleDisplay = subtitleOptions ? subtitleOptions.display : undefined;
+    const previousSuppressEmbeddedChartText = suppressEmbeddedChartText;
+
+    suppressEmbeddedChartText = true;
+    if (titleOptions) titleOptions.display = false;
+    if (subtitleOptions) subtitleOptions.display = false;
+    chart.update('none');
+
+    try {
+      ctx.drawImage(chart.canvas, x, y, width, height);
+    } finally {
+      if (titleOptions) titleOptions.display = previousTitleDisplay;
+      if (subtitleOptions) subtitleOptions.display = previousSubtitleDisplay;
+      suppressEmbeddedChartText = previousSuppressEmbeddedChartText;
+      chart.update('none');
+    }
   }
 
   function wrapText(ctx, text, maxWidth) {
